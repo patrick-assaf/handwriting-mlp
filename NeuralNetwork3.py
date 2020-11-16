@@ -16,12 +16,35 @@ def sigmoid_function(z):
 def cost_function(y, y_hat):
     x = np.array(y)
     x_hat = np.array(y_hat)
-    m = x.shape[1]
+    m = 1
     return -(1./m) * (np.sum(np.multiply(np.log(x_hat), x)) + np.sum(np.multiply(np.log(1-x_hat), (1-x))))
 
-for row in range(2000):
-    int_row = list(map(int, train_image_list[row]))
-    print(np.reshape(np.array(int_row), (28, 28)))
-    int_label = list(map(int, train_label_list[row]))
-    print(int_label)
-    break
+learning_rate = 1
+
+X = np.array(list(map(int, train_image_list[0])))
+Y = np.array(list(map(int, train_label_list[0])))
+
+n_x = X.shape[0]
+m = 1
+
+W = np.random.randn(n_x, 1) * 0.01
+b = np.zeros((1, 1))
+
+cost = 0
+
+for i in range(2000):
+    Z = np.matmul(W.T, X) + b
+    A = sigmoid_function(Z)
+
+    cost = cost_function(Y, A)
+
+    dW = (1/m) * np.matmul(X, (A-Y).T)
+    db = (1/m) * np.sum(A-Y, axis=1, keepdims=True)
+
+    W = W - learning_rate * dW
+    b = b - learning_rate * db
+
+    if (i % 100 == 0):
+        print("Epoch", i, "cost: ", cost)
+
+print("Final cost:", cost)
