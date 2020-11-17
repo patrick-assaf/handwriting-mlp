@@ -1,4 +1,6 @@
-import csv
+import time
+start_time = time.time()
+
 import numpy as np
 
 train_image = open('../data/train_image.csv')
@@ -11,39 +13,66 @@ def cost_function(y, y_hat):
     m = y.shape[1]
     return -(1./m) * (np.sum(np.multiply(np.log(y_hat), y)) + np.sum(np.multiply(np.log(1-y_hat), (1-y))))
 
-X = np.genfromtxt('../data/train_image.csv', delimiter=',')
-Y = np.genfromtxt('../data/train_label.csv', delimiter=',')
+def compute_multiclass_loss(Y, Y_hat):
+    L_sum = np.sum(np.multiply(Y, np.log(Y_hat)))
+    m = Y.shape[1]
+    L = -(1/m) * L_sum
+    return L
 
-Y = np.reshape(Y, (-1, 1))
+X_train = np.genfromtxt('../data/train_image.csv', delimiter=',')
+Y_train = np.genfromtxt('../data/train_label.csv', delimiter=',')
 
-X = (X/255).T
+X_test = np.genfromtxt('../data/test_image.csv', delimiter=',')
+Y_test = np.genfromtxt('../data/test_label.csv', delimiter=',')
 
-y_new = np.zeros(Y.shape)
-y_new[np.where(Y == 0.0)[0]] = 1
-Y = y_new
+Y_train = np.reshape(Y_train, (-1, 1))
+Y_test = np.reshape(Y_test, (-1, 1))
 
-Y = Y.T
+X_train = (X_train/255).T
+X_test = (X_test/255).T
 
-n_x = X.shape[0]
-n_h = 64
+digits = 10
+
+train_examples = Y_train.shape[0]
+test_examples = Y_test.shape[0]
+
+Y_train_new = np.eye(digits)[Y_train.astype('int32')]
+Y_train_new = Y_train_new.T.reshape(digits, train_examples)
+
+Y_test_new = np.eye(digits)[Y_test.astype('int32')]
+Y_test_new = Y_test_new.T.reshape(digits, test_examples)
+
+m = 60000
+
+Y_train = Y_train_new[:,:m]
+Y_test = Y_test_new[:,:m]
+
+shuffle_index = np.random.permutation(m)
+X_train, Y_train = X_train[:, shuffle_index], Y_train[:, shuffle_index]
+
 learning_rate = 1
+
+n_x = X_train.shape[0]
+n_h = 64
 
 W1 = np.random.randn(n_h, n_x)
 b1 = np.zeros((n_h, 1))
-W2 = np.random.randn(1, n_h)
-b2 = np.zeros((1, 1))
+W2 = np.random.randn(digits, n_h)
+b2 = np.zeros((digits, 1))
 
-m = 60000
+X = X_train
+Y = Y_train
+
 cost = 0
 
 for i in range(2000):
 
-    Z1 = np.matmul(W1, X) + b1
+    Z1 = np.matmul(W1,X) + b1
     A1 = sigmoid_function(Z1)
-    Z2 = np.matmul(W2, A1) + b2
-    A2 = sigmoid_function(Z2)
+    Z2 = np.matmul(W2,A1) + b2
+    A2 = np.exp(Z2) / np.sum(np.exp(Z2), axis=0)
 
-    cost = cost_function(Y, A2)
+    cost = compute_multiclass_loss(Y, A2)
 
     dZ2 = A2-Y
     dW2 = (1./m) * np.matmul(dZ2, A1.T)
@@ -59,7 +88,24 @@ for i in range(2000):
     W1 = W1 - learning_rate * dW1
     b1 = b1 - learning_rate * db1
 
-    if i % 100 == 0:
+    if (i % 100 == 0):
         print("Epoch", i, "cost: ", cost)
 
 print("Final cost:", cost)
+
+from sklearn.metrics import classification_report, confusion_matrix
+
+Z1 = np.matmul(W1, X_test) + b1
+A1 = sigmoid_function(Z1)
+Z2 = np.matmul(W2, A1) + b2
+A2 = np.exp(Z2) / np.sum(np.exp(Z2), axis=0)
+
+predictions = np.argmax(A2, axis=0)
+labels = np.argmax(Y_test, axis=0)
+
+print(confusion_matrix(predictions, labels))
+print(classification_report(predictions, labels))
+
+np.savetxt("test_predictions.csv", predictions, delimiter=",", fmt='%d')
+
+print("--- %s seconds ---" % (time.time() - start_time))
