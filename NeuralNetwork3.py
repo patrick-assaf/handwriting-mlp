@@ -34,34 +34,28 @@ Y_test = Y_test_new[:,:m]
 shuffle_index = np.random.permutation(m)
 X_train, Y_train = X_train[:, shuffle_index], Y_train[:, shuffle_index]
 
-def sigmoid(z):
+def sigmoid_function(z):
     return 1 / (1 + np.exp(-z))
 
-def compute_loss(y, y_hat):
+def cost_function(y, y_hat):
     m = y.shape[1]
     return -(1./m) * (np.sum(np.multiply(np.log(y_hat), y)) + np.sum(np.multiply(np.log(1-y_hat), (1-y))))
 
-def compute_multiclass_loss(Y, Y_hat):
-    L_sum = np.sum(np.multiply(Y, np.log(Y_hat)))
-    m = Y.shape[1]
-    L = -(1/m) * L_sum
-    return L
-
-def feed_forward(X, params):
+def feedforward(X, params):
     cache = {}
     cache["Z1"] = np.matmul(params["W1"], X) + params["b1"]
-    cache["A1"] = sigmoid(cache["Z1"])
+    cache["A1"] = sigmoid_function(cache["Z1"])
     cache["Z2"] = np.matmul(params["W2"], cache["A1"]) + params["b2"]
     cache["A2"] = np.exp(cache["Z2"]) / np.sum(np.exp(cache["Z2"]), axis=0)
     return cache
 
-def back_propagate(X, Y, params, cache):
+def backpropagation(X, Y, params, cache):
     dZ2 = cache["A2"] - Y
     dW2 = (1./m_batch) * np.matmul(dZ2, cache["A1"].T)
     db2 = (1./m_batch) * np.sum(dZ2, axis=1, keepdims=True)
 
     dA1 = np.matmul(params["W2"].T, dZ2)
-    dZ1 = dA1 * sigmoid(cache["Z1"]) * (1 - sigmoid(cache["Z1"]))
+    dZ1 = dA1 * sigmoid_function(cache["Z1"]) * (1 - sigmoid_function(cache["Z1"]))
     dW1 = (1./m_batch) * np.matmul(dZ1, X.T)
     db1 = (1./m_batch) * np.sum(dZ1, axis=1, keepdims=True)
 
@@ -105,8 +99,8 @@ for i in range(9):
         Y = Y_train_shuffled[:, begin:end]
         m_batch = end - begin
 
-        cache = feed_forward(X, params)
-        grads = back_propagate(X, Y, params, cache)
+        cache = feedforward(X, params)
+        grads = backpropagation(X, Y, params, cache)
 
         V_dW1 = (beta * V_dW1 + (1. - beta) * grads["dW1"])
         V_db1 = (beta * V_db1 + (1. - beta) * grads["db1"])
@@ -118,17 +112,17 @@ for i in range(9):
         params["W2"] = params["W2"] - learning_rate * V_dW2
         params["b2"] = params["b2"] - learning_rate * V_db2
 
-    cache = feed_forward(X_train, params)
-    train_cost = compute_loss(Y_train, cache["A2"])
-    cache = feed_forward(X_test, params)
-    test_cost = compute_loss(Y_test, cache["A2"])
+    cache = feedforward(X_train, params)
+    train_cost = cost_function(Y_train, cache["A2"])
+    cache = feedforward(X_test, params)
+    test_cost = cost_function(Y_test, cache["A2"])
     print("Epoch {}: training cost = {}, test cost = {}".format(i+1 ,train_cost, test_cost))
 
 print("Done.")
 
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report
 
-cache = feed_forward(X_test, params)
+cache = feedforward(X_test, params)
 predictions = np.argmax(cache["A2"], axis=0)
 labels = np.argmax(Y_test, axis=0)
 
