@@ -4,35 +4,42 @@ start_time = time.time()
 import numpy as np
 
 X_train = np.genfromtxt('../data/train_image.csv', delimiter=',')
-Y_train = np.genfromtxt('../data/train_label.csv', delimiter=',')
-
 X_test = np.genfromtxt('../data/test_image.csv', delimiter=',')
+Y_train = np.genfromtxt('../data/train_label.csv', delimiter=',')
 Y_test = np.genfromtxt('../data/test_label.csv', delimiter=',')
 
-Y_train = np.reshape(Y_train, (-1, 1))
-Y_test = np.reshape(Y_test, (-1, 1))
-
-X_train = (X_train/255).T
-X_test = (X_test/255).T
-
 digits = 10
+sample_size = 60000
+shuffle_index = np.random.permutation(sample_size)
 
-train_examples = Y_train.shape[0]
+def process_train_image_data(image_data):
+    image_data = (image_data/255).T
+    image_data = image_data[:, shuffle_index]
+    return image_data
+
+def process_test_image_data(image_data):
+    image_data = (image_data/255).T
+    return image_data
+
+def process_train_labels(label_data):
+    label_data = np.reshape(label_data, (-1, 1))
+    train_examples = label_data.shape[0]
+    new_label_data = np.eye(digits)[label_data.astype('int32')]
+    new_label_data = new_label_data.T.reshape(digits, train_examples)
+    label_data = new_label_data[:,:sample_size]
+    label_data = label_data[:, shuffle_index]
+    return label_data
+
+X_train = process_train_image_data(X_train)
+X_test = process_test_image_data(X_test)
+Y_train = process_train_labels(Y_train)
+
+# Test labels for precision report
+Y_test = np.reshape(Y_test, (-1, 1))
 test_examples = Y_test.shape[0]
-
-Y_train_new = np.eye(digits)[Y_train.astype('int32')]
-Y_train_new = Y_train_new.T.reshape(digits, train_examples)
-
 Y_test_new = np.eye(digits)[Y_test.astype('int32')]
 Y_test_new = Y_test_new.T.reshape(digits, test_examples)
-
-m = 60000
-
-Y_train = Y_train_new[:,:m]
-Y_test = Y_test_new[:,:m]
-
-shuffle_index = np.random.permutation(m)
-X_train, Y_train = X_train[:, shuffle_index], Y_train[:, shuffle_index]
+Y_test = Y_test_new[:,:sample_size]
 
 def sigmoid_function(z):
     return 1 / (1 + np.exp(-z))
@@ -71,7 +78,7 @@ n_h = 64
 learning_rate = 4
 beta = .9
 batch_size = 128
-batches = -(-m // batch_size)
+batches = -(-sample_size // batch_size)
 
 # initialization
 params = { "W1": np.random.randn(n_h, n_x) * np.sqrt(1. / n_x),
