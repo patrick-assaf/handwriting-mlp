@@ -9,7 +9,7 @@ train_labels = np.genfromtxt('../data/train_label.csv', delimiter=',')
 
 digits = 10
 sample_size = 60000
-learning_rate = 4
+rate = 4
 beta = 0.9
 batch_size = 128
 number_of_batches = 469
@@ -30,19 +30,15 @@ train_image_data = process_image_data(train_image_data)
 test_image_data = process_image_data(test_image_data )
 train_labels = process_train_labels(train_labels)
 
-# initialization
-np.random.seed(138)
+np.random.seed(140)
 W1 = np.random.randn(64, 784) * np.sqrt(1/784)
-b1 = np.zeros((64, 1)) * np.sqrt(1/784)
 W2 = np.random.randn(digits, 64) * np.sqrt(1/64)
+b1 = np.zeros((64, 1)) * np.sqrt(1/784)
 b2 = np.zeros((digits, 1)) * np.sqrt(1/64) 
 
-gradients = {"dW1": 0, "db1": 0, "dW2": 0, "db2": 0}
+gradients = { "dW1": 0, "db1": 0, "dW2": 0, "db2": 0 }
 
-V_dW1 = np.zeros((64, 784))
-V_db1 = np.zeros((64, 1))
-V_dW2 = np.zeros((digits, 64))
-V_db2 = np.zeros((digits, 1))
+variances = { "dW1": np.zeros((64, 784)), "db1": np.zeros((64, 1)), "dW2": np.zeros((digits, 64)), "db2": np.zeros((digits, 1)) }
 
 def sigmoid_function(x):
     return 1 / (1 + np.exp(-x))
@@ -51,24 +47,26 @@ def cost_function(x, x_hat):
     return -(1/x.shape[1]) * (np.sum(np.multiply(x, np.log(x_hat))) + np.sum(np.multiply((1-x), np.log(1-x_hat))))
 
 def feedforward(image_data, W1, b1, W2, b2):
-    cache = {}
-    cache["Z1"] = np.matmul(W1, image_data) + b1
-    cache["A1"] = sigmoid_function(cache["Z1"])
-    cache["Z2"] = np.matmul(W2, cache["A1"]) + b2
-    cache["A2"] = np.exp(cache["Z2"]) / np.sum(np.exp(cache["Z2"]), axis=0)
-    return cache
+    Z1 = np.matmul(W1, image_data) + b1
+    A1 = sigmoid_function(Z1)
+    Z2 = np.matmul(W2, A1) + b2
+    A2 = np.exp(Z2) / np.sum(np.exp(Z2), axis=0)
+    return { "Z1": Z1, "A1": A1, "Z2": Z2, "A2": A2 }
 
 def backpropagation(image_data, labels, cache, W2):
-    dZ2 = cache["A2"] - labels
-    dW2 = (1/current_batch_size) * np.matmul(dZ2, cache["A1"].T)
-    db2 = (1/current_batch_size) * np.sum(dZ2, axis=1, keepdims=True)
+    Z1, A1, A2 = cache["Z1"], cache["A1"], cache["A2"]
+    dW2 = (1/current_batch_size) * np.matmul(A2-labels, A1.T)
+    db2 = (1/current_batch_size) * np.sum(A2-labels, axis=1, keepdims=True)
+    dW1 = (1/current_batch_size) * np.matmul(np.matmul(W2.T, A2-labels) * sigmoid_function(Z1) * (1-sigmoid_function(Z1)), image_data.T)
+    db1 = (1/current_batch_size) * np.sum(np.matmul(W2.T, A2-labels) * sigmoid_function(Z1) * (1-sigmoid_function(Z1)), axis=1, keepdims=True)
+    return { "dW1": dW1, "db1": db1, "dW2": dW2, "db2": db2 }
 
-    dA1 = np.matmul(W2.T, dZ2)
-    dZ1 = dA1 * sigmoid_function(cache["Z1"]) * (1 - sigmoid_function(cache["Z1"]))
-    dW1 = (1/current_batch_size) * np.matmul(dZ1, image_data.T)
-    db1 = (1/current_batch_size) * np.sum(dZ1, axis=1, keepdims=True)
-
-    return {"dW1": dW1, "db1": db1, "dW2": dW2, "db2": db2}
+def shrinkVariance(gradients):
+    dW1_variance = (beta * variances["dW1"]  + (1 - beta) * gradients["dW1"])
+    db1_variance = (beta * variances["db1"]  + (1 - beta) * gradients["db1"])
+    dW2_variance = (beta * variances["dW2"] + (1 - beta) * gradients["dW2"])
+    db2_variance = (beta * variances["db2"]  + (1 - beta) * gradients["db2"])
+    return { "dW1": dW1_variance, "db1": db1_variance, "dW2": dW2_variance, "db2": db2_variance }
 
 # train
 for epoch in range(9):
@@ -84,16 +82,12 @@ for epoch in range(9):
 
         cache = feedforward(image_data, W1, b1, W2, b2)
         gradients = backpropagation(image_data, labels, cache, W2)
+        variances = shrinkVariance(gradients)
 
-        V_dW1 = (beta * V_dW1 + (1 - beta) * gradients["dW1"])
-        V_db1 = (beta * V_db1 + (1 - beta) * gradients["db1"])
-        V_dW2 = (beta * V_dW2 + (1 - beta) * gradients["dW2"])
-        V_db2 = (beta * V_db2 + (1 - beta) * gradients["db2"])
-
-        W1 = W1 - learning_rate * V_dW1
-        b1 = b1 - learning_rate * V_db1
-        W2 = W2 - learning_rate * V_dW2
-        b2 = b2 - learning_rate * V_db2
+        W1 = W1 - variances["dW1"] * rate
+        b1 = b1 - variances["db1"] * rate
+        W2 = W2 - variances["dW2"] * rate
+        b2 = b2 - variances["db2"] * rate
 
     cache = feedforward(train_image_data, W1, b1, W2, b2)
     train_cost = cost_function(train_labels, cache["A2"])
