@@ -9,11 +9,9 @@ train_labels = np.genfromtxt('../data/train_label.csv', delimiter=',')
 
 digits = 10
 sample_size = 60000
-shuffle_index = np.random.permutation(sample_size)
 
 def process_train_image_data(image_data):
     image_data = (image_data/255).T
-    image_data = image_data[:, shuffle_index]
     return image_data
 
 def process_test_image_data(image_data):
@@ -26,7 +24,6 @@ def process_train_labels(label_data):
     new_label_data = np.eye(digits)[label_data.astype('int32')]
     new_label_data = new_label_data.T.reshape(digits, train_examples)
     label_data = new_label_data[:,:sample_size]
-    label_data = label_data[:, shuffle_index]
     return label_data
 
 train_image_data = process_train_image_data(train_image_data)
