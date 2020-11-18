@@ -3,9 +3,9 @@ start_time = time.time()
 
 import numpy as np
 
-X_train = np.genfromtxt('../data/train_image.csv', delimiter=',')
-X_test = np.genfromtxt('../data/test_image.csv', delimiter=',')
-Y_train = np.genfromtxt('../data/train_label.csv', delimiter=',')
+train_image_data = np.genfromtxt('../data/train_image.csv', delimiter=',')
+test_image_data = np.genfromtxt('../data/test_image.csv', delimiter=',')
+train_labels = np.genfromtxt('../data/train_label.csv', delimiter=',')
 
 digits = 10
 sample_size = 60000
@@ -29,9 +29,9 @@ def process_train_labels(label_data):
     label_data = label_data[:, shuffle_index]
     return label_data
 
-X_train = process_train_image_data(X_train)
-X_test = process_test_image_data(X_test)
-Y_train = process_train_labels(Y_train)
+train_image_data = process_train_image_data(train_image_data)
+test_image_data = process_test_image_data(test_image_data )
+train_labels = process_train_labels(train_labels)
 
 # hyperparameters
 learning_rate = 4
@@ -40,13 +40,6 @@ batch_size = 128
 batches = 469
 
 # initialization
-gradients = { 
-    "dW1": 0, 
-    "db1": 0, 
-    "dW2": 0, 
-    "db2": 0 
-}
-
 np.random.seed(138)
 parameters = { 
     "W1": np.random.randn(64, 784) * np.sqrt(1/784),
@@ -55,10 +48,12 @@ parameters = {
     "b2": np.zeros((digits, 1)) * np.sqrt(1/64) 
 }
 
-V_dW1 = np.zeros(parameters["W1"].shape)
-V_db1 = np.zeros(parameters["b1"].shape)
-V_dW2 = np.zeros(parameters["W2"].shape)
-V_db2 = np.zeros(parameters["b2"].shape)
+gradients = {"dW1": 0, "db1": 0, "dW2": 0, "db2": 0}
+
+V_dW1 = np.zeros((64, 784))
+V_db1 = np.zeros((64, 1))
+V_dW2 = np.zeros((digits, 64))
+V_db2 = np.zeros((digits, 1))
 
 def sigmoid_function(x):
     return 1 / (1 + np.exp(-x))
@@ -76,33 +71,30 @@ def feedforward(image_data, parameters):
 
 def backpropagation(image_data, labels, parameters, cache):
     dZ2 = cache["A2"] - labels
-    dW2 = (1/m_batch) * np.matmul(dZ2, cache["A1"].T)
-    db2 = (1/m_batch) * np.sum(dZ2, axis=1, keepdims=True)
+    dW2 = (1/current_batch_size) * np.matmul(dZ2, cache["A1"].T)
+    db2 = (1/current_batch_size) * np.sum(dZ2, axis=1, keepdims=True)
 
     dA1 = np.matmul(parameters["W2"].T, dZ2)
     dZ1 = dA1 * sigmoid_function(cache["Z1"]) * (1 - sigmoid_function(cache["Z1"]))
-    dW1 = (1/m_batch) * np.matmul(dZ1, image_data.T)
-    db1 = (1/m_batch) * np.sum(dZ1, axis=1, keepdims=True)
+    dW1 = (1/current_batch_size) * np.matmul(dZ1, image_data.T)
+    db1 = (1/current_batch_size) * np.sum(dZ1, axis=1, keepdims=True)
 
     return {"dW1": dW1, "db1": db1, "dW2": dW2, "db2": db2}
 
 # train
 for epoch in range(9):
 
-    permutation = np.random.permutation(X_train.shape[1])
-    X_train_shuffled = X_train[:, permutation]
-    Y_train_shuffled = Y_train[:, permutation]
-
     for batch in range(batches):
 
-        begin = batch * batch_size
-        end = min(begin + batch_size, X_train.shape[1] - 1)
-        X = X_train_shuffled[:, begin:end]
-        Y = Y_train_shuffled[:, begin:end]
-        m_batch = end - begin
+        batch_start = batch * batch_size
+        batch_end = min(batch_start + batch_size, sample_size-1)
+        current_batch_size = batch_end - batch_start
 
-        cache = feedforward(X, parameters)
-        gradients = backpropagation(X, Y, parameters, cache)
+        image_data = train_image_data[:, batch_start:batch_end]
+        labels = train_labels[:, batch_start:batch_end]
+
+        cache = feedforward(image_data, parameters)
+        gradients = backpropagation(image_data, labels, parameters, cache)
 
         V_dW1 = (beta * V_dW1 + (1 - beta) * gradients["dW1"])
         V_db1 = (beta * V_db1 + (1 - beta) * gradients["db1"])
@@ -114,9 +106,9 @@ for epoch in range(9):
         parameters["W2"] = parameters["W2"] - learning_rate * V_dW2
         parameters["b2"] = parameters["b2"] - learning_rate * V_db2
 
-    cache = feedforward(X_train, parameters)
-    train_cost = cost_function(Y_train, cache["A2"])
-    cache = feedforward(X_test, parameters)
+    cache = feedforward(train_image_data, parameters)
+    train_cost = cost_function(train_labels, cache["A2"])
+    cache = feedforward(test_image_data, parameters)
     print("Epoch {}: training cost = {}".format(epoch+1 ,train_cost))
 
 print("Done.")
@@ -131,7 +123,7 @@ Y_test_new = np.eye(digits)[Y_test.astype('int32')]
 Y_test_new = Y_test_new.T.reshape(digits, test_examples)
 Y_test = Y_test_new[:,:sample_size]
 
-cache = feedforward(X_test, parameters)
+cache = feedforward(test_image_data, parameters)
 predictions = np.argmax(cache["A2"], axis=0)
 labels = np.argmax(Y_test, axis=0)
 
