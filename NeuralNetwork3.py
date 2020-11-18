@@ -9,12 +9,12 @@ train_labels = np.genfromtxt('../data/train_label.csv', delimiter=',')
 
 digits = 10
 sample_size = 60000
+learning_rate = 4
+beta = 0.9
+batch_size = 128
+number_of_batches = 469
 
-def process_train_image_data(image_data):
-    image_data = (image_data/255).T
-    return image_data
-
-def process_test_image_data(image_data):
+def process_image_data(image_data):
     image_data = (image_data/255).T
     return image_data
 
@@ -26,15 +26,9 @@ def process_train_labels(label_data):
     label_data = new_label_data[:,:sample_size]
     return label_data
 
-train_image_data = process_train_image_data(train_image_data)
-test_image_data = process_test_image_data(test_image_data )
+train_image_data = process_image_data(train_image_data)
+test_image_data = process_image_data(test_image_data )
 train_labels = process_train_labels(train_labels)
-
-# hyperparameters
-learning_rate = 4
-beta = 0.9
-batch_size = 128
-batches = 469
 
 # initialization
 np.random.seed(138)
@@ -81,7 +75,7 @@ def backpropagation(image_data, labels, parameters, cache):
 # train
 for epoch in range(9):
 
-    for batch in range(batches):
+    for batch in range(number_of_batches):
 
         batch_start = batch * batch_size
         batch_end = min(batch_start + batch_size, sample_size-1)
