@@ -6,7 +6,6 @@ import numpy as np
 X_train = np.genfromtxt('../data/train_image.csv', delimiter=',')
 X_test = np.genfromtxt('../data/test_image.csv', delimiter=',')
 Y_train = np.genfromtxt('../data/train_label.csv', delimiter=',')
-Y_test = np.genfromtxt('../data/test_label.csv', delimiter=',')
 
 digits = 10
 sample_size = 60000
@@ -34,19 +33,11 @@ X_train = process_train_image_data(X_train)
 X_test = process_test_image_data(X_test)
 Y_train = process_train_labels(Y_train)
 
-# Test labels for precision report
-Y_test = np.reshape(Y_test, (-1, 1))
-test_examples = Y_test.shape[0]
-Y_test_new = np.eye(digits)[Y_test.astype('int32')]
-Y_test_new = Y_test_new.T.reshape(digits, test_examples)
-Y_test = Y_test_new[:,:sample_size]
+def sigmoid_function(x):
+    return 1 / (1 + np.exp(-x))
 
-def sigmoid_function(z):
-    return 1 / (1 + np.exp(-z))
-
-def cost_function(y, y_hat):
-    m = y.shape[1]
-    return -(1./m) * (np.sum(np.multiply(np.log(y_hat), y)) + np.sum(np.multiply(np.log(1-y_hat), (1-y))))
+def cost_function(x, x_hat):
+    return -(1/x.shape[1]) * (np.sum(np.multiply(x, np.log(x_hat))) + np.sum(np.multiply((1-x), np.log(1-x_hat))))
 
 def feedforward(X, params):
     cache = {}
@@ -122,12 +113,19 @@ for i in range(9):
     cache = feedforward(X_train, params)
     train_cost = cost_function(Y_train, cache["A2"])
     cache = feedforward(X_test, params)
-    test_cost = cost_function(Y_test, cache["A2"])
-    print("Epoch {}: training cost = {}, test cost = {}".format(i+1 ,train_cost, test_cost))
+    print("Epoch {}: training cost = {}".format(i+1 ,train_cost))
 
 print("Done.")
 
 from sklearn.metrics import classification_report
+
+# Test labels for precision report
+Y_test = np.genfromtxt('../data/test_label.csv', delimiter=',')
+Y_test = np.reshape(Y_test, (-1, 1))
+test_examples = Y_test.shape[0]
+Y_test_new = np.eye(digits)[Y_test.astype('int32')]
+Y_test_new = Y_test_new.T.reshape(digits, test_examples)
+Y_test = Y_test_new[:,:sample_size]
 
 cache = feedforward(X_test, params)
 predictions = np.argmax(cache["A2"], axis=0)
