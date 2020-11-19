@@ -1,11 +1,12 @@
 import time
 start_time = time.time()
 
+import sys
 import numpy as np
 
-train_image_data = np.genfromtxt('../data/train_image.csv', delimiter=',')
-test_image_data = np.genfromtxt('../data/test_image.csv', delimiter=',')
-train_labels = np.genfromtxt('../data/train_label.csv', delimiter=',')
+train_image_data = np.genfromtxt('../data/' + sys.argv[1], delimiter=',')
+train_labels = np.genfromtxt('../data/' + sys.argv[2], delimiter=',')
+test_image_data = np.genfromtxt('../data/' + sys.argv[3], delimiter=',')
 
 digits = 10
 sample_size = 60000
