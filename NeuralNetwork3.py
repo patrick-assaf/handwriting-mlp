@@ -86,20 +86,8 @@ for epoch in range(digits-1):
         gradients = back_propagation_function(image_data, labels, training_information, weight_two)
         variances = shrink_variance_values(gradients)
 
-from sklearn.metrics import classification_report
-
-# Test labels for precision report
-Y_test = np.genfromtxt('../data/test_label.csv', delimiter=',')
-Y_test = np.reshape(Y_test, (-1, 1))
-test_examples = Y_test.shape[0]
-Y_test_new = np.eye(digits)[Y_test.astype('int32')]
-Y_test_new = Y_test_new.T.reshape(digits, test_examples)
-Y_test = Y_test_new[:,:sample_size]
-
 test_data = feed_forward_function(test_image_data, weight_one, weight_two, bias_one, bias_two)
 test_predictions = np.argmax(test_data["activation_two"], axis=0)
-labels = np.argmax(Y_test, axis=0)
-print(classification_report(test_predictions, labels))
 
 np.savetxt("test_predictions.csv", test_predictions, delimiter=",", fmt='%d')
 
