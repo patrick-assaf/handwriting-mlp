@@ -31,14 +31,13 @@ test_image_data = process_image_data(test_image_data )
 train_labels = process_train_labels(train_labels)
 
 np.random.seed(140)
-W1 = np.random.randn(64, 784) * np.sqrt(1/784)
-W2 = np.random.randn(digits, 64) * np.sqrt(1/64)
-b1 = np.zeros((64, 1)) * np.sqrt(1/784)
-b2 = np.zeros((digits, 1)) * np.sqrt(1/64) 
+weight_one = np.random.randn(64, 784) * np.sqrt(1/784)
+weight_two = np.random.randn(digits, 64) * np.sqrt(1/64)
+bias_one = np.zeros((64, 1)) * np.sqrt(1/784)
+bias_two = np.zeros((digits, 1)) * np.sqrt(1/64) 
 
-gradients = { "dW1": 0, "db1": 0, "dW2": 0, "db2": 0 }
-
-variances = { "dW1": np.zeros((64, 784)), "db1": np.zeros((64, 1)), "dW2": np.zeros((digits, 64)), "db2": np.zeros((digits, 1)) }
+gradients = { "d_weight_one": 0, "d_weight_two": 0, "d_bias_one": 0, "d_bias_two": 0 }
+variances = { "d_weight_one": np.zeros((64, 784)), "d_weight_two": np.zeros((digits, 64)), "d_bias_one": np.zeros((64, 1)), "d_bias_two": np.zeros((digits, 1)) }
 
 def sigmoid_function(x):
     return 1 / (1 + np.exp(-x))
@@ -46,55 +45,45 @@ def sigmoid_function(x):
 def cost_function(x, x_hat):
     return -(1/x.shape[1]) * (np.sum(np.multiply(x, np.log(x_hat))) + np.sum(np.multiply((1-x), np.log(1-x_hat))))
 
-def feedforward(image_data, W1, b1, W2, b2):
-    Z1 = np.matmul(W1, image_data) + b1
-    A1 = sigmoid_function(Z1)
-    Z2 = np.matmul(W2, A1) + b2
-    A2 = np.exp(Z2) / np.sum(np.exp(Z2), axis=0)
-    return { "Z1": Z1, "A1": A1, "Z2": Z2, "A2": A2 }
+def feed_forward_function(image_data, weight_one, weight_two, bias_one, bias_two):
+    layer_one = np.matmul(weight_one, image_data) + bias_one
+    activation_one = sigmoid_function(layer_one)
+    layer_two = np.matmul(weight_two, activation_one) + bias_two
+    activation_two = np.exp(layer_two) / np.sum(np.exp(layer_two), axis=0)
+    return { "layer_one": layer_one, "activation_one": activation_one, "layer_two": layer_two, "activation_two": activation_two }
 
-def backpropagation(image_data, labels, cache, W2):
-    Z1, A1, A2 = cache["Z1"], cache["A1"], cache["A2"]
-    dW2 = (1/current_batch_size) * np.matmul(A2-labels, A1.T)
-    db2 = (1/current_batch_size) * np.sum(A2-labels, axis=1, keepdims=True)
-    dW1 = (1/current_batch_size) * np.matmul(np.matmul(W2.T, A2-labels) * sigmoid_function(Z1) * (1-sigmoid_function(Z1)), image_data.T)
-    db1 = (1/current_batch_size) * np.sum(np.matmul(W2.T, A2-labels) * sigmoid_function(Z1) * (1-sigmoid_function(Z1)), axis=1, keepdims=True)
-    return { "dW1": dW1, "db1": db1, "dW2": dW2, "db2": db2 }
+def back_propagation_function(image_data, labels, training_information, weight_two):
+    layer_one, activation_one, activation_two = training_information["layer_one"], training_information["activation_one"], training_information["activation_two"]
+    d_weight_one = (1/current_batch_size) * np.matmul(np.matmul(weight_two.T, activation_two-labels) * sigmoid_function(layer_one) * (1-sigmoid_function(layer_one)), image_data.T)
+    d_weight_two = (1/current_batch_size) * np.matmul(activation_two-labels, activation_one.T)
+    d_bias_one = (1/current_batch_size) * np.sum(np.matmul(weight_two.T, activation_two-labels) * sigmoid_function(layer_one) * (1-sigmoid_function(layer_one)), axis=1, keepdims=True)
+    d_bias_two = (1/current_batch_size) * np.sum(activation_two-labels, axis=1, keepdims=True)
+    return { "d_weight_one": d_weight_one, "d_weight_two": d_weight_two, "d_bias_one": d_bias_one, "d_bias_two": d_bias_two }
 
-def shrinkVariance(gradients):
-    dW1_variance = (beta * variances["dW1"]  + (1 - beta) * gradients["dW1"])
-    db1_variance = (beta * variances["db1"]  + (1 - beta) * gradients["db1"])
-    dW2_variance = (beta * variances["dW2"] + (1 - beta) * gradients["dW2"])
-    db2_variance = (beta * variances["db2"]  + (1 - beta) * gradients["db2"])
-    return { "dW1": dW1_variance, "db1": db1_variance, "dW2": dW2_variance, "db2": db2_variance }
+def shrink_variance_values(gradients):
+    d_weight_one_variance = (beta * variances["d_weight_one"]  + (1 - beta) * gradients["d_weight_one"])
+    d_weight_two_variance = (beta * variances["d_weight_two"] + (1 - beta) * gradients["d_weight_two"])
+    d_bias_one_variance = (beta * variances["d_bias_one"]  + (1 - beta) * gradients["d_bias_one"])
+    d_bias_two_variance = (beta * variances["d_bias_two"]  + (1 - beta) * gradients["d_bias_two"])
+    return { "d_weight_one": d_weight_one_variance, "d_weight_two": d_weight_two_variance, "d_bias_one": d_bias_one_variance, "d_bias_two": d_bias_two_variance }
 
-# train
-for epoch in range(9):
+def get_current_batch_size(batch):
+    batch_start = batch * batch_size
+    batch_end = min(batch_start + batch_size, sample_size-1)
+    return batch_end - batch_start
 
+for epoch in range(digits-1):
     for batch in range(number_of_batches):
-
-        batch_start = batch * batch_size
-        batch_end = min(batch_start + batch_size, sample_size-1)
-        current_batch_size = batch_end - batch_start
-
-        image_data = train_image_data[:, batch_start:batch_end]
-        labels = train_labels[:, batch_start:batch_end]
-
-        cache = feedforward(image_data, W1, b1, W2, b2)
-        gradients = backpropagation(image_data, labels, cache, W2)
-        variances = shrinkVariance(gradients)
-
-        W1 = W1 - variances["dW1"] * rate
-        b1 = b1 - variances["db1"] * rate
-        W2 = W2 - variances["dW2"] * rate
-        b2 = b2 - variances["db2"] * rate
-
-    cache = feedforward(train_image_data, W1, b1, W2, b2)
-    train_cost = cost_function(train_labels, cache["A2"])
-    cache = feedforward(test_image_data, W1, b1, W2, b2)
-    print("Epoch {}: training cost = {}".format(epoch+1 ,train_cost))
-
-print("Done.")
+        weight_one = weight_one - variances["d_weight_one"] * rate
+        weight_two = weight_two - variances["d_weight_two"] * rate
+        bias_one = bias_one - variances["d_bias_one"] * rate
+        bias_two = bias_two - variances["d_bias_two"] * rate
+        current_batch_size = get_current_batch_size(batch)
+        image_data = train_image_data[:, batch * batch_size : min(batch * batch_size + batch_size, sample_size-1)]
+        labels = train_labels[:, batch * batch_size : min(batch * batch_size + batch_size, sample_size-1)]
+        training_information = feed_forward_function(image_data, weight_one, weight_two, bias_one, bias_two)
+        gradients = back_propagation_function(image_data, labels, training_information, weight_two)
+        variances = shrink_variance_values(gradients)
 
 from sklearn.metrics import classification_report
 
@@ -106,12 +95,11 @@ Y_test_new = np.eye(digits)[Y_test.astype('int32')]
 Y_test_new = Y_test_new.T.reshape(digits, test_examples)
 Y_test = Y_test_new[:,:sample_size]
 
-cache = feedforward(test_image_data, W1, b1, W2, b2)
-predictions = np.argmax(cache["A2"], axis=0)
+test_data = feed_forward_function(test_image_data, weight_one, weight_two, bias_one, bias_two)
+test_predictions = np.argmax(test_data["activation_two"], axis=0)
 labels = np.argmax(Y_test, axis=0)
+print(classification_report(test_predictions, labels))
 
-print(classification_report(predictions, labels))
-
-np.savetxt("test_predictions.csv", predictions, delimiter=",", fmt='%d')
+np.savetxt("test_predictions.csv", test_predictions, delimiter=",", fmt='%d')
 
 print("--- %s seconds ---" % (time.time() - start_time))
