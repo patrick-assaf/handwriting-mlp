@@ -47,9 +47,9 @@ def cost_function(x, x_hat):
     return -(1/x.shape[1]) * (np.sum(np.multiply(x, np.log(x_hat))) + np.sum(np.multiply((1-x), np.log(1-x_hat))))
 
 def feed_forward_function(image_data, weight_one, weight_two, bias_one, bias_two):
-    layer_one = np.matmul(weight_one, image_data) + bias_one
+    layer_one = bias_one + np.matmul(weight_one, image_data)
     activation_one = sigmoid_function(layer_one)
-    layer_two = np.matmul(weight_two, activation_one) + bias_two
+    layer_two = bias_two + np.matmul(weight_two, activation_one)
     activation_two = np.exp(layer_two) / np.sum(np.exp(layer_two), axis=0)
     return { "layer_one": layer_one, "activation_one": activation_one, "layer_two": layer_two, "activation_two": activation_two }
 
@@ -62,10 +62,10 @@ def back_propagation_function(image_data, labels, training_information, weight_t
     return { "d_weight_one": d_weight_one, "d_weight_two": d_weight_two, "d_bias_one": d_bias_one, "d_bias_two": d_bias_two }
 
 def shrink_variance_values(gradients):
-    d_weight_one_variance = (beta * variances["d_weight_one"]  + (1 - beta) * gradients["d_weight_one"])
-    d_weight_two_variance = (beta * variances["d_weight_two"] + (1 - beta) * gradients["d_weight_two"])
-    d_bias_one_variance = (beta * variances["d_bias_one"]  + (1 - beta) * gradients["d_bias_one"])
-    d_bias_two_variance = (beta * variances["d_bias_two"]  + (1 - beta) * gradients["d_bias_two"])
+    d_weight_one_variance = (variances["d_weight_one"] * beta + gradients["d_weight_one"] * (1-beta))
+    d_weight_two_variance = (variances["d_weight_two"] * beta + gradients["d_weight_two"] * (1-beta))
+    d_bias_one_variance = (variances["d_bias_one"] * beta + gradients["d_bias_one"] * (1-beta))
+    d_bias_two_variance = (variances["d_bias_two"] * beta + gradients["d_bias_two"] * (1-beta))
     return { "d_weight_one": d_weight_one_variance, "d_weight_two": d_weight_two_variance, "d_bias_one": d_bias_one_variance, "d_bias_two": d_bias_two_variance }
 
 def get_current_batch_size(batch):
