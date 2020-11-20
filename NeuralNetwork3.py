@@ -41,9 +41,6 @@ bias_two = np.sqrt(1/64) * np.zeros((digits, 1))
 def sigmoid_function(x):
     return 1 / (1 + np.exp(-x))
 
-def cost_function(x, x_hat):
-    return (np.sum(np.multiply((1-x), np.log(1-x_hat))) + np.sum(np.multiply(x, np.log(x_hat)))) * (-1/x.shape[1])
-
 def get_current_batch_size(batch):
     return min(sample_size-1, batch_size + batch_size * batch) - batch_size * batch
 
