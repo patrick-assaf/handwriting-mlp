@@ -56,7 +56,7 @@ def feed_forward_function(image_data, weight_one, weight_two, bias_one, bias_two
     layer_one = bias_one + np.matmul(weight_one, image_data)
     layer_two = bias_two + np.matmul(weight_two, sigmoid_function(bias_one + np.matmul(weight_one, image_data)))
     activation_one = sigmoid_function(bias_one + np.matmul(weight_one, image_data))
-    activation_two = np.exp(layer_two) / np.sum(np.exp(layer_two), axis=0)
+    activation_two = np.exp(layer_two) * (1 / np.sum(np.exp(layer_two), axis=0))
     return { "layer_one": layer_one, "activation_one": activation_one, "layer_two": layer_two, "activation_two": activation_two }
 
 def shrink_variance_values(gradients):
