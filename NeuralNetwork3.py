@@ -46,10 +46,10 @@ def get_current_batch_size(batch):
 
 def back_propagation_function(image_data, labels, training_information, weight_two):
     layer_one, activation_one, activation_two = training_information["layer_one"], training_information["activation_one"], training_information["activation_two"]
-    d_weight_one = np.matmul(np.matmul(weight_two.T, activation_two-labels) * sigmoid_function(layer_one) * (1-sigmoid_function(layer_one)), image_data.T) * (1/current_batch_size)
-    d_weight_two = np.matmul(activation_two-labels, activation_one.T) * (1/current_batch_size)
-    d_bias_one = np.sum(np.matmul(weight_two.T, activation_two-labels) * sigmoid_function(layer_one) * (1-sigmoid_function(layer_one)), axis=1, keepdims=True) * (1/current_batch_size)
-    d_bias_two = np.sum(activation_two-labels, axis=1, keepdims=True) * (1/current_batch_size)
+    d_weight_one = np.matmul(np.matmul(weight_two.T, activation_two-labels) * sigmoid_function(layer_one) * (1-sigmoid_function(layer_one)), image_data.T) / current_batch_size
+    d_weight_two = np.matmul(activation_two-labels, activation_one.T) / current_batch_size
+    d_bias_one = np.sum(np.matmul(weight_two.T, activation_two-labels) * sigmoid_function(layer_one) * (1-sigmoid_function(layer_one)), axis=1, keepdims=True) / current_batch_size
+    d_bias_two = np.sum(activation_two-labels, axis=1, keepdims=True) / current_batch_size
     return { "d_weight_one": d_weight_one, "d_weight_two": d_weight_two, "d_bias_one": d_bias_one, "d_bias_two": d_bias_two }
 
 def feed_forward_function(image_data, weight_one, weight_two, bias_one, bias_two):
